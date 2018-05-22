@@ -44,7 +44,6 @@ export default class Slider {
             X: -50,
             Y: -50
         }
-        this.currentSlideNumber = '1'
         // blur
         this.filterBlur = {
             value: 20
@@ -60,6 +59,9 @@ export default class Slider {
         this.xoffStart = {
             value: 0
         };
+        this.arrowMove = {
+            value: 150
+        }
         
         this.globalAlpha = {
             value: 1
@@ -237,6 +239,7 @@ export default class Slider {
         }
         this.drawLinesDots();
         this.drawNumberLine();
+        this.drawArrowText();
     }
     
     drawLinesDots() {
@@ -264,6 +267,39 @@ export default class Slider {
         _that.ctx.stroke();
     }
     
+    drawArrowText() {
+        let _that = this;
+        //line main
+        _that.ctx.beginPath();
+        _that.ctx.moveTo( _that.canvas.width - _that.arrowMove.value, _that.canvas.height*0.7 - _that.arrowMove.value*_that.angle );
+        _that.ctx.lineTo( _that.canvas.width - _that.arrowMove.value - 40,_that.canvas.height*0.7 - _that.arrowMove.value*_that.angle - 40*_that.angle);
+        _that.ctx.lineWidth = 1;
+        _that.ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        _that.ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        _that.ctx.stroke();
+        // line top
+        _that.ctx.beginPath();
+        _that.ctx.moveTo( _that.canvas.width - _that.arrowMove.value - 40,_that.canvas.height*0.7 - _that.arrowMove.value*_that.angle - 40*_that.angle);
+        _that.ctx.lineTo( _that.canvas.width - _that.arrowMove.value - 35,_that.canvas.height*0.7 - _that.arrowMove.value*_that.angle + 6);
+        _that.ctx.lineWidth = 1;
+        _that.ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        _that.ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        _that.ctx.stroke();
+        _that.ctx.beginPath();
+        _that.ctx.moveTo( _that.canvas.width - _that.arrowMove.value - 40,_that.canvas.height*0.7 - _that.arrowMove.value*_that.angle - 40*_that.angle);
+        _that.ctx.lineTo( _that.canvas.width - _that.arrowMove.value - 22,_that.canvas.height*0.7 - _that.arrowMove.value*_that.angle + 27);
+        _that.ctx.lineWidth = 1;
+        _that.ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        _that.ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        _that.ctx.stroke();
+        
+        //text
+        _that.ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        _that.ctx.font = "12px Gilroy";
+        _that.ctx.fillText(`S C R O L L  D O W N`,_that.canvas.width*0.87,_that.canvas.height*0.9167);
+        
+    }
+    
     cutShape = () => {
         
         let _that = this;
@@ -281,22 +317,8 @@ export default class Slider {
             // back image
             _that.ctx.clearRect(0, 0, _that.canvas.width, _that.canvas.height);
             _that.ctx.save();
-            _that.drawImageProp(_that.ctx, _that.nextSlide, -150, -150, _that.canvas.width +200,_that.canvas.height+200, 0, 0 );
+            _that.drawImageProp(_that.ctx, _that.nextSlide, -150, -150, _that.canvas.width +150,_that.canvas.height+150, 0, 0 );
             _that.ctx.restore();
-        // for ( let i = 0; i< _that.shapes.length; i++) {
-        //     _that.ctx.save();
-        //     _that.ctx.globalAlpha = _that.globalAlpha.value;
-        //     // _that.ctx.filter = 'brightness(0.5)';
-        //     _that.ctx.beginPath();
-        //     _that.ctx.moveTo(_that.canvas.width*_that.shapes[i].moveX, _that.canvas.height*_that.shapes[i].moveY);
-        //     _that.ctx.lineTo(_that.canvas.width*_that.shapes[i].x1, _that.canvas.height*_that.shapes[i].y1);
-        //     _that.ctx.lineTo(_that.canvas.width*_that.shapes[i].x2, _that.canvas.height*_that.shapes[i].y2);
-        //     _that.ctx.lineTo(_that.canvas.width*_that.shapes[i].x3, _that.canvas.height*_that.shapes[i].y3);
-        //     _that.ctx.closePath();
-        //     _that.ctx.clip();
-        //     _that.drawImageProp(_that.ctx, _that.nextSlide, _that.xoff.value*_that.shapes[i].inertia -150, a*_that.xoff.value*_that.shapes[i].inertia -150, _that.canvas.width +150,_that.canvas.height +150, 0, 0 )
-        //     _that.ctx.restore();
-        // }
             
         for ( let i = 0; i< _that.shapes.length; i++) {
             _that.ctx.save();
@@ -309,7 +331,7 @@ export default class Slider {
             _that.ctx.lineTo(_that.canvas.width*_that.shapes[i].x3, _that.canvas.height*_that.shapes[i].y3);
             _that.ctx.closePath();
             _that.ctx.clip();
-            _that.drawImageProp(_that.ctx, _that.currentSlide, _that.xoff.value*_that.shapes[i].inertia -150, a*_that.xoff.value*_that.shapes[i].inertia -150, _that.canvas.width +200,_that.canvas.height +200, 0, 0 )
+            _that.drawImageProp(_that.ctx, _that.currentSlide, _that.xoff.value*_that.shapes[i].inertia -150, a*_that.xoff.value*_that.shapes[i].inertia -150, _that.canvas.width +150,_that.canvas.height +150, 0, 0 )
             _that.ctx.restore();
         }
             // add overlay
@@ -381,7 +403,7 @@ export default class Slider {
         const OVER_VALUE = 1.5;
         requestAnimationFrame(this.cutShape);
         // reset tween
-        // this.tl.time(0.6);
+        this.tl.time(0);
         // _that.drawSlideNumber();
         this.tl
             .to(this.xoff, 3, {
@@ -390,55 +412,22 @@ export default class Slider {
                 onUpdate: this.cutShape,
                 onComplete: changeImageTrigger
             })
-            .to(this.filterBlur, 2, {
-                value: 0 ,
-                ease: Power4.easeInOut,
-                onUpdate: this.cutShape
-            }, '-=3 ')
             .to(this.globalAlpha, 1.5, {
                 value: 0 ,
                 ease: Power4.easeIn,
                 onUpdate: this.cutShape
             }, '-=3 ');
+        
         _that.sliderCounter++;
         _that.drawSlideNumber();
-        // console.log(_that.navDots.indexOf(_that.$dotsLi));
-        // let changeImageTrigger = setTimeout( function() {
-        //     _that.changeImg();
-        // }, 8000);
+        
         function changeImageTrigger() {
-            // if ( _that.sliderCounter - 1 < _that.images.length - 1 ) {
-            //     _that.imageSrcNextSlide = _that.images[_that.sliderCounter];
-            //     _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1];
-            // } else {
-            //     _that.imageSrcNextSlide = _that.images[0];
-            //     _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1];
-            //     _that.sliderCounter = 0;
-            // }
-            // _that.xoff.value = 20;
-            // _that.tl2.time(0);
-            // _that.tl2
-            //     .to(_that.xoff, 3, {
-            //         value: 20,
-            //         ease: Power4.easeIn,
-            //         onUpdate: _that.cutShape
-            //     })
-            
             setTimeout( () => {
                 _that.changeImg();
-            }, 100)
+            }, 5000)
             
         };
         
-        
-            // document.body.onkeyup = function(e){
-            //
-            //     if(e.keyCode == 67){
-            //         _that.autoplayStop === false;
-            //         _that.tl.play();
-            //         _that.tl.time(0);
-            //     }
-            // }
         window.addEventListener('scroll', function() {
             let yPos = window.pageYOffset;
             if ( yPos < _that.canvas.height) {
@@ -464,19 +453,11 @@ export default class Slider {
             _that.imageSrcNextSlide = _that.images[_that.sliderCounter];
             _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1];
         } else {
-
             _that.imageSrcNextSlide = _that.images[0];
             _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1];
             _that.sliderCounter = 0;
         }
-        // this.tl.time(0.6);
-        // TimelineMax.log
-        TweenMax.fromTo(_that.tl,0.5,{time:0},{time:0.6})
-        this.tl.pause();
-        setTimeout( () => {
-            _that.render();
-        }, 4000)
-        // this.render();
+        this.render();
         
     }
     
@@ -516,6 +497,34 @@ export default class Slider {
             _that.$dotsContainer.classList.add('navContainer');
             _that.$dotsContainer.appendChild(_that.$dotsLi)
         }
+        _that.initDotsEvent()
+    }
+    initDotsEvent() {
+        let _that = this;
+        for ( let i = 0; i < _that.navDots.length; i++) {
+            _that.navDots[i].addEventListener('click', function() {
+                    if ( this.classList.contains('active') ) return;
+                
+                    if ( _that.autoplayStop === false) {
+                        _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1];
+                    } else {
+                        _that.imageSrcCurrentSlide = _that.imageSrcNextSlide;
+                    }
+                    _that.autoplayStop = true;
+                    for ( let i = 0; i < _that.navDots.length; i++) {
+                        _that.navDots[i].classList.remove('active');
+                    }
+                    let index = _that.navDots.indexOf(this);
+                    _that.sliderCounter = index;
+                    
+                    _that.imageSrcNextSlide = _that.images[index];
+                    
+                    _that.render();
+                    _that.drawSlideNumber()
+                    this.classList.add('active');
+                
+            })
+        }
     }
     onResize() {
         let _that = this;
@@ -526,7 +535,7 @@ export default class Slider {
             this.canvas.height = this.$container.offsetHeight;
             this.canvas.elem.width = this.canvas.width;
             this.canvas.elem.height = this.canvas.height;
-            _that.init();
+            window.location.reload()
         });
     }
 }
