@@ -1,18 +1,24 @@
-.intro-wrapper
-    max-height: 100vh
-    overflow: hidden
 .canvas-wrapper
     width: 100%
     position: relative
     height: 100vh
     @media only screen and (max-width: 767px)
         height: 550px
+@keyframes showContainer
+    0%
+        opacity: 0
+        transform: translateY(-20px)
+    100%
+        opacity: 1
+        transform: translateY(0)
 .navContainer
     position: absolute
     left: 10%
     bottom: 6%
     display: flex
     z-index: 2
+    animation: showContainer 0.5s ease
+    animation-fill-mode: forwards
     @media only screen and (max-width: 767px)
         bottom: 3%
 .navLink
@@ -20,6 +26,7 @@
     width: 5px
     height: 5px
     background-color: #fff
+    opacity: .6
     transition: .5s
 .navItem
     margin-right: 5px
@@ -34,5 +41,6 @@
     @media only screen and (min-width: 1200px)
         &:hover
             .navLink
-                background-color: #38b138
-                opacity: 0.7
+                opacity: 1
+                transform: rotate(45deg)
+                transform-origin: center

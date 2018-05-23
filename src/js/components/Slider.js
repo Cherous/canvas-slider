@@ -1,14 +1,37 @@
 import { TweenMax } from 'gsap'
-import { $window, Resp } from "../modules/dev/_helpers";
 export default class Slider {
     
-    constructor($class) {
-        
+    constructor($class, options) {
+        const defaults = {
+            linesColor: 'rgba(120,120,120,0.5)',
+            smallLineColor: 'rgba(56,177,56,0.8)',
+            smallLineInertia: 15,
+            slideNumberSeparatorColor: 'rgba(56,177,56,0.8)',
+            slideNumberColor: 'rgba(56,177,56,0.8)',
+            slideNumberFontSize: '26',
+            slideNumberFontFamily: 'RobotoLight',
+            rightText: 'S C R O L L  D O W N',
+            rightTextFontSize: '12',
+            rightTextFontFamily: 'Gilroy',
+            rightTextOffsetLeft: '95',
+            rightTextOffsetTop: '93',
+            rightTextAlign: 'right',
+            overlayFirstColor: '#000',
+            overlaySecondColor: '#000',
+            overlayOpacity: 0.5
+        };
+        const populated = Object.assign(defaults, options);
+        for (const key in populated) {
+            if (populated.hasOwnProperty(key)) {
+                this[key] = populated[key];
+            }
+        }
         // create and append canvas into container
         this.$container = document.querySelector($class);
         this.canvas = {};
         this.canvas.elem = document.createElement('canvas');
-        if ( Resp.isRetina ) {
+        // check retina display
+        if ( window.devicePixelRatio > 1 ? true : false ) {
             this.canvas.width = this.$container.offsetWidth;
             this.canvas.height = this.$container.offsetHeight;
             this.canvas.elem.width = this.canvas.width*2;
@@ -27,13 +50,17 @@ export default class Slider {
             this.ctx = this.canvas.elem.getContext('2d');
         }
         
-        
         // get all img in slider
         this.images = this.$container.getAttribute('data-images').split(',');
         // set first and next slides to show
         this.sliderCounter = 1;
         this.imageSrcCurrentSlide = this.images[0];
         this.imageSrcNextSlide = this.images[1];
+        
+        // overlay gradient
+        this.grd = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0);
+        this.grd.addColorStop(0, this.overlayFirstColor);
+        this.grd.addColorStop(1, this.overlaySecondColor);
         
         // params
         this.navDots = [];
@@ -43,11 +70,11 @@ export default class Slider {
         this.startShapePosition = {
             X: -50,
             Y: -50
-        }
+        };
         // blur
         this.filterBlur = {
             value: 20
-        }
+        };
         
         this.offsetMove = {
             value: this.canvas.height/2
@@ -60,16 +87,26 @@ export default class Slider {
             value: 0
         };
         this.arrowMove = {
-            value: 150
+            value: -150
+        };
+        this.startGlobalAlpha = {
+            value: 0
         }
-        
         this.globalAlpha = {
             value: 1
         };
+        this.textGlobalAlpha = {
+            value: 0
+        };
+        this.numberAlpha = {
+            value: 1
+        }
         
         this.tl = new TimelineMax({paused:true});
         this.tlDots = new TimelineMax();
         this.tl2 = new TimelineMax();
+        this.tlArrowText = new TimelineMax();
+        this.tlStart = new TimelineMax();
         
         this.lines = [
             {
@@ -217,13 +254,110 @@ export default class Slider {
     }
     
     init() {
-        this.render();
-        this.drawSlideNumber();
-        this.createDots();
+        this.initLoad();
     }
     
     getRandom(min, max) {
         return Math.floor(Math.random() * (max - min)) + min;
+    }
+    
+    initLoad() {
+        // console.log(this.startGlobalAlpha.value);
+        
+        let _that = this;
+        
+        this.nextSlide = new Image();
+        this.nextSlide.src = this.imageSrcNextSlide;
+    
+        this.currentSlide = new Image();
+        this.currentSlide.src = this.imageSrcCurrentSlide;
+    
+        let a = _that.angle;
+        
+        let drawFirstShapes = () => {
+            
+            this.ctx.globalAlpha = _that.startGlobalAlpha.value;
+            _that.ctx.clearRect(0, 0, _that.canvas.width, _that.canvas.height);
+            for ( let i = 0; i< _that.shapes.length; i++) {
+                
+                _that.ctx.save();
+                // _that.ctx.filter = 'brightness(0.5)';
+                _that.ctx.beginPath();
+                _that.ctx.moveTo(_that.canvas.width*_that.shapes[i].moveX, _that.canvas.height*_that.shapes[i].moveY);
+                _that.ctx.lineTo(_that.canvas.width*_that.shapes[i].x1, _that.canvas.height*_that.shapes[i].y1);
+                _that.ctx.lineTo(_that.canvas.width*_that.shapes[i].x2, _that.canvas.height*_that.shapes[i].y2);
+                _that.ctx.lineTo(_that.canvas.width*_that.shapes[i].x3, _that.canvas.height*_that.shapes[i].y3);
+                _that.ctx.closePath();
+                _that.ctx.clip();
+                _that.drawImageProp(_that.ctx, _that.currentSlide, _that.xoff.value*_that.shapes[i].inertia -150, a*_that.xoff.value*_that.shapes[i].inertia -150, _that.canvas.width +150,_that.canvas.height +150, 0, 0 )
+                _that.ctx.restore();
+            }
+            // add overlay
+            _that.ctx.save();
+            _that.ctx.globalAlpha = _that.startGlobalAlpha.value*_that.overlayOpacity;
+            _that.ctx.rect(0,0,_that.canvas.width, _that.canvas.height);
+            
+            _that.ctx.fillStyle = _that.grd;
+            
+            _that.ctx.fill();
+            _that.ctx.restore();
+            _that.drawLines();
+            
+            _that.ctx.save();
+            _that.ctx.globalAlpha = _that.startGlobalAlpha.value;
+            _that.ctx.fillStyle = _that.slideNumberColor;
+            _that.ctx.font = `${_that.slideNumberFontSize}px ${_that.slideNumberFontFamily}`;
+            _that.ctx.fillText(`01`,_that.canvas.width*0.046875,_that.canvas.height*0.90);
+            _that.ctx.restore();
+            
+        }
+        
+        let firstDrawDots = () => {
+            let _that = this;
+            _that.$dotsContainer = document.createElement('ul');
+            _that.$dotsContainer.classList.add('navContainer');
+            for (let i = 0; i < _that.images.length;i++) {
+                _that.$dotsLi = document.createElement('li');
+                _that.$dotsLink = document.createElement('a');
+                _that.$dotsLink.setAttribute('href','#');
+                _that.$dotsLink.classList.add('navLink');
+                _that.$dotsLi.classList.add('navItem');
+                _that.$dotsLi.appendChild(_that.$dotsLink);
+                _that.navDots.push(_that.$dotsLi);
+                _that.$container.appendChild(_that.$dotsContainer);
+                _that.$dotsContainer.classList.add('navContainer');
+                _that.$dotsContainer.appendChild(_that.$dotsLi)
+            }
+            _that.navDots[0].classList.add('active')
+            _that.initDotsEvent();
+        }
+        
+        let firstRender = () => {
+            
+            this.tlStart
+        
+                .to(_that.numberAlpha, 1, {
+                    value: 1,
+                    ease: Power2.easeInOut,
+                    onComplete: firstDrawDots
+                })
+            
+            setTimeout( () => {
+                this.render();
+                this.drawSlideNumber();
+                this.createDots();
+            }, 2000)
+            
+        }
+        this.tlStart
+            
+            .to(_that.startGlobalAlpha, 3, {
+                value: 1,
+                ease: Power2.easeInOut,
+                onUpdate: drawFirstShapes,
+                onComplete: firstRender
+            })
+        
     }
     
     drawLines() {
@@ -233,8 +367,8 @@ export default class Slider {
             _that.ctx.moveTo(this.canvas.width*_that.lines[i].moveX ,this.canvas.height*_that.lines[i].moveY);
             _that.ctx.lineTo(this.canvas.width*_that.lines[i].x ,this.canvas.height*_that.lines[i].y);
             _that.ctx.lineWidth = 1;
-            _that.ctx.strokeStyle = 'rgba(120,120,120,0.5)';
-            _that.ctx.fillStyle = 'rgba(120,120,120,0.5)';
+            _that.ctx.strokeStyle = _that.linesColor;
+            _that.ctx.fillStyle = _that.linesColor;
             _that.ctx.stroke();
         }
         this.drawLinesDots();
@@ -250,8 +384,8 @@ export default class Slider {
             _that.ctx.moveTo(this.canvas.width*_that.lines[i].moveX - this.offsetMove.value*_that.lines[i].inertia,this.canvas.height*_that.lines[i].moveY - this.offsetMove.value*this.angle*_that.lines[i].inertia);
             _that.ctx.lineTo(this.canvas.width*_that.lines[i].moveX - this.offsetMove.value*_that.lines[i].inertia - 15,this.canvas.height*_that.lines[i].moveY - this.offsetMove.value*this.angle*_that.lines[i].inertia - 15*this.angle);
             _that.ctx.lineWidth = 4;
-            _that.ctx.strokeStyle = 'rgba(56,177,56,0.8)';
-            _that.ctx.fillStyle = 'rgba(56,177,56,0.8)';
+            _that.ctx.strokeStyle = _that.smallLineColor;
+            _that.ctx.fillStyle = _that.smallLineColor;
             _that.ctx.stroke();
         }
     }
@@ -259,11 +393,11 @@ export default class Slider {
     drawNumberLine() {
         let _that = this;
         _that.ctx.beginPath();
-        _that.ctx.moveTo(0 + _that.canvas.width*0.046875, _that.canvas.height + _that.canvas.width*0.046875*this.angle);
-        _that.ctx.lineTo(  _that.canvas.width*0.09875 - 15,this.canvas.height + _that.canvas.width*0.09875*this.angle - 15*this.angle);
+        _that.ctx.moveTo(0 + _that.canvas.width*0.06875, _that.canvas.height + _that.canvas.width*0.06875*this.angle);
+        _that.ctx.lineTo(  _that.canvas.width*0.1175 - 15,this.canvas.height + _that.canvas.width*0.1175*this.angle - 15*this.angle);
         _that.ctx.lineWidth = 1;
-        _that.ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-        _that.ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        _that.ctx.strokeStyle = _that.slideNumberSeparatorColor;
+        _that.ctx.fillStyle = _that.slideNumberSeparatorColor;
         _that.ctx.stroke();
     }
     
@@ -287,16 +421,32 @@ export default class Slider {
         _that.ctx.stroke();
         _that.ctx.beginPath();
         _that.ctx.moveTo( _that.canvas.width - _that.arrowMove.value - 40,_that.canvas.height*0.7 - _that.arrowMove.value*_that.angle - 40*_that.angle);
-        _that.ctx.lineTo( _that.canvas.width - _that.arrowMove.value - 22,_that.canvas.height*0.7 - _that.arrowMove.value*_that.angle + 27);
+        _that.ctx.lineTo( _that.canvas.width - _that.arrowMove.value - 24,_that.canvas.height*0.7 - _that.arrowMove.value*_that.angle + 27);
         _that.ctx.lineWidth = 1;
         _that.ctx.strokeStyle = 'rgba(255,255,255,0.7)';
         _that.ctx.fillStyle = 'rgba(255,255,255,0.7)';
         _that.ctx.stroke();
         
         //text
+        _that.ctx.save();
+        _that.ctx.globalAlpha = _that.textGlobalAlpha.value;
         _that.ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        _that.ctx.font = "12px Gilroy";
-        _that.ctx.fillText(`S C R O L L  D O W N`,_that.canvas.width*0.87,_that.canvas.height*0.9167);
+        _that.ctx.textAlign = _that.rightTextAlign;
+        _that.ctx.font = `${_that.rightTextFontSize}px ${_that.rightTextFontFamily}`;
+        _that.ctx.fillText(`${_that.rightText}`,_that.canvas.width*_that.rightTextOffsetLeft/100,_that.canvas.height*_that.rightTextOffsetTop/100);
+        _that.ctx.restore();
+        
+        _that.tlArrowText
+            .to(this.arrowMove, 3, {
+                delay: 1,
+                value: _that.canvas.height*0.3,
+                ease: Power4.easeOut
+            })
+            .to(this.textGlobalAlpha, 3, {
+                value: 1,
+                ease: Power4.easeInOut
+            }, '-=3')
+        
         
     }
     
@@ -336,9 +486,9 @@ export default class Slider {
         }
             // add overlay
             _that.ctx.save();
-            _that.ctx.globalAlpha = '0.5';
+            _that.ctx.globalAlpha = _that.overlayOpacity;
             _that.ctx.rect(0,0,_that.canvas.width, _that.canvas.height)
-            _that.ctx.fillStyle = '#000';
+            _that.ctx.fillStyle = _that.grd;
             _that.ctx.fill();
             _that.ctx.restore();
             _that.drawLines();
@@ -404,7 +554,7 @@ export default class Slider {
         requestAnimationFrame(this.cutShape);
         // reset tween
         this.tl.time(0);
-        // _that.drawSlideNumber();
+        
         this.tl
             .to(this.xoff, 3, {
                 value: _that.canvas.width * OVER_VALUE,
@@ -469,40 +619,25 @@ export default class Slider {
                 _that.navDots[_that.sliderCounter - 1].classList.add('active')
             }
         }
+    
+        _that.ctx.fillStyle = _that.slideNumberColor;
+        _that.ctx.font = `${_that.slideNumberFontSize}px ${_that.slideNumberFontFamily}`;
         
         if ( _that.sliderCounter === 0 ) {
-            _that.ctx.fillStyle = 'rgba(56,177,56,0.8)';
-            _that.ctx.font = "26px RobotoLight";
             _that.ctx.fillText(`0${_that.images.length}`,_that.canvas.width*0.046875,_that.canvas.height*0.90);
         } else {
-            _that.ctx.fillStyle = 'rgba(56,177,56,0.8)';
-            _that.ctx.font = "26px RobotoLight";
             _that.ctx.fillText(`0${_that.sliderCounter}`,_that.canvas.width*0.046875,_that.canvas.height*0.90);
         }
         
     }
     createDots() {
-        let _that = this;
-        _that.$dotsContainer = document.createElement('ul');
-        _that.$dotsContainer.classList.add('navContainer');
-        for (let i = 0; i < _that.images.length;i++) {
-            _that.$dotsLi = document.createElement('li');
-            _that.$dotsLink = document.createElement('a');
-            _that.$dotsLink.setAttribute('href','#');
-            _that.$dotsLink.classList.add('navLink');
-            _that.$dotsLi.classList.add('navItem');
-            _that.$dotsLi.appendChild(_that.$dotsLink);
-            _that.navDots.push(_that.$dotsLi);
-            _that.$container.appendChild(_that.$dotsContainer);
-            _that.$dotsContainer.classList.add('navContainer');
-            _that.$dotsContainer.appendChild(_that.$dotsLi)
-        }
-        _that.initDotsEvent()
+        // this.initDotsEvent();
     }
     initDotsEvent() {
         let _that = this;
         for ( let i = 0; i < _that.navDots.length; i++) {
-            _that.navDots[i].addEventListener('click', function() {
+            _that.navDots[i].addEventListener('click', function(e) {
+                    e.preventDefault();
                     if ( this.classList.contains('active') ) return;
                 
                     if ( _that.autoplayStop === false) {
