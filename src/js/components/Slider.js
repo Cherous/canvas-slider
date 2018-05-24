@@ -3,6 +3,36 @@ import { TweenMax } from 'gsap'
 export default class Slider {
   
   constructor ($class, options) {
+    
+    // check object assign support
+    if (typeof Object.assign != 'function') {
+      Object.defineProperty(Object, 'assign', {
+        value: function assign (target, varArgs) {
+          'use strict'
+          if (target == null) {
+            throw new TypeError('Cannot convert undefined or null to object')
+          }
+          
+          let to = Object(target)
+          
+          for (let index = 1; index < arguments.length; index++) {
+            let nextSource = arguments[index]
+            
+            if (nextSource != null) {
+              for (let nextKey in nextSource) {
+                if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+                  to[nextKey] = nextSource[nextKey]
+                }
+              }
+            }
+          }
+          return to
+        },
+        writable: true,
+        configurable: true
+      })
+    }
+    
     // set default options
     const defaults = {
       linesColor: 'rgba(120,120,120,0.5)',
@@ -29,32 +59,18 @@ export default class Slider {
       }
     }
     // create and append canvas into container
-    this.class = $class;
-    this.$container = document.querySelector($class);
-    this.canvas = {};
+    this.class = $class
+    this.container = document.querySelector($class)
+    this.canvas = {}
     this.canvas.elem = document.createElement('canvas')
     // check retina display
-    if (window.devicePixelRatio > 1 ? true : false) {
-      this.canvas.width = this.$container.offsetWidth
-      this.canvas.height = this.$container.offsetHeight
-      this.canvas.elem.width = this.canvas.width * 2
-      this.canvas.elem.height = this.canvas.height * 2
-      this.canvas.elem.style.width = `${this.$container.offsetWidth}px`
-      this.canvas.elem.style.height = `${this.$container.offsetHeight}px`
-      this.$container.appendChild(this.canvas.elem)
-      this.ctx = this.canvas.elem.getContext('2d')
-      this.ctx.scale(2, 2)
-    } else {
-      this.canvas.width = this.$container.offsetWidth
-      this.canvas.height = this.$container.offsetHeight
-      this.canvas.elem.width = this.canvas.width
-      this.canvas.elem.height = this.canvas.height
-      this.$container.appendChild(this.canvas.elem)
-      this.ctx = this.canvas.elem.getContext('2d')
-    }
+    window.devicePixelRatio > 1 ? this.initRetinaDisplay() : this.initDefaultDisplay()
     
     // get all img in slider
-    this.images = this.$container.getAttribute('data-images').split(',')
+    this.images = this.container.getAttribute('data-images').split(',')
+    
+    if (!this.images.length) return
+    
     // set first and next slides to show
     this.sliderCounter = 1
     this.imageSrcCurrentSlide = this.images[0]
@@ -67,9 +83,9 @@ export default class Slider {
     
     // params
     this.navDots = []
+    this.interval = false
     // y = a*x
     this.angle = ( -(this.canvas.height ) / (this.canvas.width) )
-    this.autoplayStop = false
     this.startShapePosition = {
       X: -50,
       Y: -50
@@ -98,13 +114,14 @@ export default class Slider {
       value: 0
     }
     this.numberAlpha = {
-      value: 1
+      value: 0
     }
     
-    this.tl = new TimelineMax({paused: true});
-    this.tlDots = new TimelineMax();
-    this.tlArrowText = new TimelineMax();
-    this.tlStart = new TimelineMax();
+    this.tl = new TimelineMax({paused: true})
+    this.tlDots = new TimelineMax()
+    this.tlArrowText = new TimelineMax()
+    this.tlStart = new TimelineMax()
+    this.tlNumber = new TimelineMax()
     
     this.lines = [
       {
@@ -247,7 +264,7 @@ export default class Slider {
           inertia: this.getRandom(5, 15)
         },
       ],
-    this.onResize()
+      this.onResize()
     this.init()
   }
   
@@ -260,26 +277,24 @@ export default class Slider {
   }
   
   initLoad () {
-    // console.log(this.startGlobalAlpha.value);
     
-    let _that = this;
+    let _that = this
     
-    this.nextSlide = new Image();
-    this.nextSlide.src = this.imageSrcNextSlide;
+    this.nextSlide = new Image()
+    this.nextSlide.src = this.imageSrcNextSlide
     
-    this.currentSlide = new Image();
-    this.currentSlide.src = this.imageSrcCurrentSlide;
+    this.currentSlide = new Image()
+    this.currentSlide.src = this.imageSrcCurrentSlide
     
-    let a = _that.angle;
+    let a = _that.angle
     
-    let drawFirstShapes = () => {
+    let drawFirstShapes = function () {
       
-      this.ctx.globalAlpha = _that.startGlobalAlpha.value;
-      _that.ctx.clearRect(0, 0, _that.canvas.width, _that.canvas.height);
+      _that.ctx.globalAlpha = _that.startGlobalAlpha.value
+      _that.ctx.clearRect(0, 0, _that.canvas.width, _that.canvas.height)
       for (let i = 0; i < _that.shapes.length; i++) {
         
         _that.ctx.save()
-        // _that.ctx.filter = 'brightness(0.5)';
         _that.ctx.beginPath()
         _that.ctx.moveTo(_that.canvas.width * _that.shapes[i].moveX, _that.canvas.height * _that.shapes[i].moveY)
         _that.ctx.lineTo(_that.canvas.width * _that.shapes[i].x1, _that.canvas.height * _that.shapes[i].y1)
@@ -309,56 +324,51 @@ export default class Slider {
       _that.ctx.restore()
       
     }
-    
-    let firstDrawDots = () => {
-      let _that = this
-      _that.$dotsContainer = document.createElement('ul')
-      _that.$dotsContainer.classList.add('navContainer')
-      for (let i = 0; i < _that.images.length; i++) {
-        _that.$dotsLi = document.createElement('li')
-        _that.$dotsLink = document.createElement('a')
-        _that.$dotsLink.setAttribute('href', '#')
-        _that.$dotsLink.classList.add('navLink')
-        _that.$dotsLi.classList.add('navItem')
-        _that.$dotsLi.appendChild(_that.$dotsLink)
-        _that.navDots.push(_that.$dotsLi)
-        _that.$container.appendChild(_that.$dotsContainer)
-        _that.$dotsContainer.classList.add('navContainer')
-        _that.$dotsContainer.appendChild(_that.$dotsLi)
-      }
-      _that.navDots[0].classList.add('active')
-      _that.initDotsEvent()
-    }
-    
-    let firstRender = () => {
-      
-      this.tlStart
-        
-        .to(_that.numberAlpha, 1, {
+    this.tlStart
+      .to(_that.startGlobalAlpha, 3, {
+        value: 1,
+        ease: Power2.easeInOut,
+        onUpdate: function () {
+          drawFirstShapes()
+        }
+      }).addCallback(() => {
+      this.tlNumber
+        .to(this.numberAlpha, 1, {
           value: 1,
           ease: Power2.easeInOut,
-          onComplete: firstDrawDots
+          onComplete: this.firstDrawDots()
         })
-      
       setTimeout(() => {
         this.render()
         this.drawSlideNumber()
       }, 2000)
       
-    }
-    this.tlStart
-      
-      .to(_that.startGlobalAlpha, 3, {
-        value: 1,
-        ease: Power2.easeInOut,
-        onUpdate: drawFirstShapes,
-        onComplete: firstRender
-      })
+    })
     
   }
   
+  firstDrawDots () {
+    // let _that = this
+    this.$dotsContainer = document.createElement('ul')
+    this.$dotsContainer.classList.add('navContainer')
+    for (let i = 0; i < this.images.length; i++) {
+      this.$dotsLi = document.createElement('li')
+      this.$dotsLink = document.createElement('a')
+      this.$dotsLink.setAttribute('href', '#')
+      this.$dotsLink.classList.add('navLink')
+      this.$dotsLi.classList.add('navItem')
+      this.$dotsLi.appendChild(this.$dotsLink)
+      this.navDots.push(this.$dotsLi)
+      this.container.appendChild(this.$dotsContainer)
+      this.$dotsContainer.classList.add('navContainer')
+      this.$dotsContainer.appendChild(this.$dotsLi)
+    }
+    this.navDots[0].classList.add('active')
+    this.initDotsEvent()
+  }
+  
   drawLines () {
-    let _that = this;
+    let _that = this
     for (let i = 0; i < _that.lines.length; i++) {
       _that.ctx.beginPath()
       _that.ctx.moveTo(_that.canvas.width * _that.lines[i].moveX, _that.canvas.height * _that.lines[i].moveY)
@@ -400,7 +410,7 @@ export default class Slider {
   
   drawArrowText () {
     let _that = this
-    if ( window.innerWidth > 1200 ) {
+    if (window.innerWidth > 1200) {
       //line main
       _that.ctx.beginPath()
       _that.ctx.moveTo(_that.canvas.width - _that.arrowMove.value, _that.canvas.height * 0.7 - _that.arrowMove.value * _that.angle)
@@ -425,7 +435,7 @@ export default class Slider {
       _that.ctx.strokeStyle = 'rgba(255,255,255,0.7)'
       _that.ctx.fillStyle = 'rgba(255,255,255,0.7)'
       _that.ctx.stroke()
-  
+      
       //text
       _that.ctx.save()
       _that.ctx.globalAlpha = _that.textGlobalAlpha.value
@@ -434,7 +444,7 @@ export default class Slider {
       _that.ctx.font = `${_that.rightTextFontSize}px ${_that.rightTextFontFamily}`
       _that.ctx.fillText(`${_that.rightText}`, _that.canvas.width * _that.rightTextOffsetLeft / 100, _that.canvas.height * _that.rightTextOffsetTop / 100)
       _that.ctx.restore()
-  
+      
       _that.tlArrowText
         .to(this.arrowMove, 3, {
           delay: 1,
@@ -448,7 +458,7 @@ export default class Slider {
     } else {
       //line main
       _that.ctx.beginPath()
-      _that.ctx.moveTo(_that.canvas.width - _that.arrowMove.value + 30, _that.canvas.height * 0.7 - _that.arrowMove.value * _that.angle + 30 *_that.angle)
+      _that.ctx.moveTo(_that.canvas.width - _that.arrowMove.value + 30, _that.canvas.height * 0.7 - _that.arrowMove.value * _that.angle + 30 * _that.angle)
       _that.ctx.lineTo(_that.canvas.width - _that.arrowMove.value + 10, _that.canvas.height * 0.7 - _that.arrowMove.value * _that.angle + 10 * _that.angle)
       _that.ctx.lineWidth = 1
       _that.ctx.strokeStyle = 'rgba(255,255,255,0.7)'
@@ -470,7 +480,7 @@ export default class Slider {
       _that.ctx.strokeStyle = 'rgba(255,255,255,0.7)'
       _that.ctx.fillStyle = 'rgba(255,255,255,0.7)'
       _that.ctx.stroke()
-  
+      
       //text
       _that.ctx.save()
       _that.ctx.globalAlpha = _that.textGlobalAlpha.value
@@ -479,7 +489,7 @@ export default class Slider {
       _that.ctx.font = `${_that.rightTextFontSize}px ${_that.rightTextFontFamily}`
       _that.ctx.fillText(`${_that.rightText}`, _that.canvas.width * _that.rightTextOffsetLeft / 100, _that.canvas.height * _that.rightTextOffsetTop / 100)
       _that.ctx.restore()
-  
+      
       _that.tlArrowText
         .to(this.arrowMove, 3, {
           delay: 1,
@@ -492,19 +502,18 @@ export default class Slider {
         }, '-=3')
     }
     
-    
   }
   
-  cutShape = () => {
+  cutShape () {
     
-    let _that = this;
-    this.nextSlide = new Image();
-    this.nextSlide.src = this.imageSrcNextSlide;
+    let _that = this
+    this.nextSlide = new Image()
+    this.nextSlide.src = this.imageSrcNextSlide
     
-    this.currentSlide = new Image();
-    this.currentSlide.src = this.imageSrcCurrentSlide;
+    this.currentSlide = new Image()
+    this.currentSlide.src = this.imageSrcCurrentSlide
     
-    let a = _that.angle;
+    let a = _that.angle
     
     _that.currentSlide.onload = function () {
       
@@ -594,7 +603,9 @@ export default class Slider {
   render () {
     let _that = this
     const OVER_VALUE = 1.5
-    requestAnimationFrame(this.cutShape)
+    requestAnimationFrame(function () {
+      _that.cutShape
+    })
     // reset tween
     this.tl.time(0)
     
@@ -602,24 +613,28 @@ export default class Slider {
       .to(this.xoff, 3, {
         value: _that.canvas.width * OVER_VALUE,
         ease: Power4.easeIn,
-        onUpdate: this.cutShape,
-        onComplete: changeImageTrigger
+        onUpdate: function () {
+          _that.cutShape()
+        }
       })
       .to(this.globalAlpha, 1.5, {
         value: 0,
-        ease: Power4.easeIn,
-        onUpdate: this.cutShape
-      }, '-=3 ')
+        ease: Power4.easeIn
+      }, '-=3 ').addCallback(() => {
+      if (!_that.interval) {
+        _that.interval = setInterval(() => {
+          _that.changeImg()
+        }, 5500)
+      }
+    })
     
     _that.sliderCounter++
-    _that.drawSlideNumber()
     
-    function changeImageTrigger () {
-      setTimeout(() => {
-        _that.changeImg()
-      }, 5000)
-      
-    }
+    // if ( !_that.interval ) {
+    //   _that.interval = setInterval( () => {
+    //     _that.changeImg()
+    //   }, 5000)
+    // }
     
     window.addEventListener('scroll', function () {
       let yPos = window.pageYOffset
@@ -632,14 +647,11 @@ export default class Slider {
           })
       }
     })
-    _that.autoplayStop === false
     _that.tl.play()
   }
   
-  changeImg = () => {
+  changeImg() {
     let _that = this
-    if (_that.autoplayStop === true) return
-    // autoplay
     
     if (_that.sliderCounter - 1 < _that.images.length - 1) {
       _that.imageSrcNextSlide = _that.images[_that.sliderCounter]
@@ -654,6 +666,7 @@ export default class Slider {
   }
   
   drawSlideNumber () {
+    
     let _that = this
     if (_that.navDots.length) {
       for (let i = 0; i < _that.navDots.length; i++) {
@@ -661,15 +674,10 @@ export default class Slider {
         _that.navDots[_that.sliderCounter - 1].classList.add('active')
       }
     }
-    
+    // _that.textGlobalAlpha = 0;
     _that.ctx.fillStyle = _that.slideNumberColor
     _that.ctx.font = `${_that.slideNumberFontSize}px ${_that.slideNumberFontFamily}`
-    
-    if (_that.sliderCounter === 0) {
-      _that.ctx.fillText(`0${_that.images.length}`, _that.canvas.width * 0.046875, _that.canvas.height * 0.90)
-    } else {
-      _that.ctx.fillText(`0${_that.sliderCounter}`, _that.canvas.width * 0.046875, _that.canvas.height * 0.90)
-    }
+    _that.ctx.fillText(`0${_that.getActiveIndex() + 1}`, _that.canvas.width * 0.046875, _that.canvas.height * 0.90)
     
   }
   
@@ -678,27 +686,36 @@ export default class Slider {
     for (let i = 0; i < _that.navDots.length; i++) {
       _that.navDots[i].addEventListener('click', function (e) {
         e.preventDefault()
+        
+        clearInterval(_that.interval)
+        
         if (this.classList.contains('active')) return
         
-        if (_that.autoplayStop === false) {
-          _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1]
-        } else {
-          _that.imageSrcCurrentSlide = _that.imageSrcNextSlide
-        }
-        _that.autoplayStop = true
+        _that.imageSrcCurrentSlide = _that.interval === false ? _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1] : _that.imageSrcCurrentSlide = _that.imageSrcNextSlide
+        
         for (let i = 0; i < _that.navDots.length; i++) {
           _that.navDots[i].classList.remove('active')
         }
-        let index = _that.navDots.indexOf(this)
+        this.classList.add('active')
+        
+        // let index = _that.navDots.indexOf(this)
+        
+        let index = _that.getActiveIndex()
+        // console.log(index)
+        
         _that.sliderCounter = index
         
         _that.imageSrcNextSlide = _that.images[index]
-        
         _that.render()
-        _that.drawSlideNumber()
-        this.classList.add('active')
         
+        _that.drawSlideNumber()
       })
+    }
+  }
+  
+  getActiveIndex () {
+    for (let i = 0; i < this.navDots.length; i++) {
+      if (this.navDots[i].classList.contains('active')) return i
     }
   }
   
@@ -707,11 +724,33 @@ export default class Slider {
     // change canvas size and reinit()
     if (window.innerWidth < 1020) return
     window.addEventListener('resize', () => {
-      _that.canvas.width = _that.$container.offsetWidth
-      _that.canvas.height = _that.$container.offsetHeight
+      _that.canvas.width = _that.container.offsetWidth
+      _that.canvas.height = _that.container.offsetHeight
       _that.canvas.elem.width = _that.canvas.width
       _that.canvas.elem.height = _that.canvas.height
+      _that.init()
       window.location.reload()
     })
+  }
+  
+  initRetinaDisplay () {
+    this.canvas.width = this.container.offsetWidth
+    this.canvas.height = this.container.offsetHeight
+    this.canvas.elem.width = this.canvas.width * 2
+    this.canvas.elem.height = this.canvas.height * 2
+    this.canvas.elem.style.width = `${this.container.offsetWidth}px`
+    this.canvas.elem.style.height = `${this.container.offsetHeight}px`
+    this.container.appendChild(this.canvas.elem)
+    this.ctx = this.canvas.elem.getContext('2d')
+    this.ctx.scale(2, 2)
+  }
+  
+  initDefaultDisplay () {
+    this.canvas.width = this.container.offsetWidth
+    this.canvas.height = this.container.offsetHeight
+    this.canvas.elem.width = this.canvas.width
+    this.canvas.elem.height = this.canvas.height
+    this.container.appendChild(this.canvas.elem)
+    this.ctx = this.canvas.elem.getContext('2d')
   }
 }

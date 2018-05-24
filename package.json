@@ -58,6 +58,7 @@
     "webpack-stream": "^3.2.0"
   },
   "dependencies": {
-    "gsap": "^1.20.4"
+    "gsap": "^1.20.4",
+    "object-assign": "^4.1.1"
   }
 }

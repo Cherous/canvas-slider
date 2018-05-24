@@ -542,70 +542,37 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var Slider = function () {
   function Slider($class, options) {
-    var _this = this;
-
     _classCallCheck(this, Slider);
 
-    this.cutShape = function () {
+    // check object assign support
+    if (typeof Object.assign != 'function') {
+      Object.defineProperty(Object, 'assign', {
+        value: function assign(target, varArgs) {
+          'use strict';
 
-      var _that = _this;
-      _this.nextSlide = new Image();
-      _this.nextSlide.src = _this.imageSrcNextSlide;
+          if (target == null) {
+            throw new TypeError('Cannot convert undefined or null to object');
+          }
 
-      _this.currentSlide = new Image();
-      _this.currentSlide.src = _this.imageSrcCurrentSlide;
+          var to = Object(target);
 
-      var a = _that.angle;
+          for (var index = 1; index < arguments.length; index++) {
+            var nextSource = arguments[index];
 
-      _that.currentSlide.onload = function () {
-
-        // back image
-        _that.ctx.clearRect(0, 0, _that.canvas.width, _that.canvas.height);
-        _that.ctx.save();
-        _that.drawImageProp(_that.ctx, _that.nextSlide, -150, -150, _that.canvas.width + 150, _that.canvas.height + 150, 0, 0);
-        _that.ctx.restore();
-
-        for (var i = 0; i < _that.shapes.length; i++) {
-          _that.ctx.save();
-          _that.ctx.globalAlpha = _that.globalAlpha.value;
-          // _that.ctx.filter = 'brightness(0.5)';
-          _that.ctx.beginPath();
-          _that.ctx.moveTo(_that.canvas.width * _that.shapes[i].moveX, _that.canvas.height * _that.shapes[i].moveY);
-          _that.ctx.lineTo(_that.canvas.width * _that.shapes[i].x1, _that.canvas.height * _that.shapes[i].y1);
-          _that.ctx.lineTo(_that.canvas.width * _that.shapes[i].x2, _that.canvas.height * _that.shapes[i].y2);
-          _that.ctx.lineTo(_that.canvas.width * _that.shapes[i].x3, _that.canvas.height * _that.shapes[i].y3);
-          _that.ctx.closePath();
-          _that.ctx.clip();
-          _that.drawImageProp(_that.ctx, _that.currentSlide, _that.xoff.value * _that.shapes[i].inertia - 150, a * _that.xoff.value * _that.shapes[i].inertia - 150, _that.canvas.width + 150, _that.canvas.height + 150, 0, 0);
-          _that.ctx.restore();
-        }
-        // add overlay
-        _that.ctx.save();
-        _that.ctx.globalAlpha = _that.overlayOpacity;
-        _that.ctx.rect(0, 0, _that.canvas.width, _that.canvas.height);
-        _that.ctx.fillStyle = _that.grd;
-        _that.ctx.fill();
-        _that.ctx.restore();
-        _that.drawLines();
-        _that.drawSlideNumber();
-      };
-    };
-
-    this.changeImg = function () {
-      var _that = _this;
-      if (_that.autoplayStop === true) return;
-      // autoplay
-
-      if (_that.sliderCounter - 1 < _that.images.length - 1) {
-        _that.imageSrcNextSlide = _that.images[_that.sliderCounter];
-        _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1];
-      } else {
-        _that.imageSrcNextSlide = _that.images[0];
-        _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1];
-        _that.sliderCounter = 0;
-      }
-      _this.render();
-    };
+            if (nextSource != null) {
+              for (var nextKey in nextSource) {
+                if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+                  to[nextKey] = nextSource[nextKey];
+                }
+              }
+            }
+          }
+          return to;
+        },
+        writable: true,
+        configurable: true
+      });
+    }
 
     // set default options
     var defaults = {
@@ -634,31 +601,17 @@ var Slider = function () {
     }
     // create and append canvas into container
     this.class = $class;
-    this.$container = document.querySelector($class);
+    this.container = document.querySelector($class);
     this.canvas = {};
     this.canvas.elem = document.createElement('canvas');
     // check retina display
-    if (window.devicePixelRatio > 1 ? true : false) {
-      this.canvas.width = this.$container.offsetWidth;
-      this.canvas.height = this.$container.offsetHeight;
-      this.canvas.elem.width = this.canvas.width * 2;
-      this.canvas.elem.height = this.canvas.height * 2;
-      this.canvas.elem.style.width = this.$container.offsetWidth + 'px';
-      this.canvas.elem.style.height = this.$container.offsetHeight + 'px';
-      this.$container.appendChild(this.canvas.elem);
-      this.ctx = this.canvas.elem.getContext('2d');
-      this.ctx.scale(2, 2);
-    } else {
-      this.canvas.width = this.$container.offsetWidth;
-      this.canvas.height = this.$container.offsetHeight;
-      this.canvas.elem.width = this.canvas.width;
-      this.canvas.elem.height = this.canvas.height;
-      this.$container.appendChild(this.canvas.elem);
-      this.ctx = this.canvas.elem.getContext('2d');
-    }
+    window.devicePixelRatio > 1 ? this.initRetinaDisplay() : this.initDefaultDisplay();
 
     // get all img in slider
-    this.images = this.$container.getAttribute('data-images').split(',');
+    this.images = this.container.getAttribute('data-images').split(',');
+
+    if (!this.images.length) return;
+
     // set first and next slides to show
     this.sliderCounter = 1;
     this.imageSrcCurrentSlide = this.images[0];
@@ -671,9 +624,9 @@ var Slider = function () {
 
     // params
     this.navDots = [];
+    this.interval = false;
     // y = a*x
     this.angle = -this.canvas.height / this.canvas.width;
-    this.autoplayStop = false;
     this.startShapePosition = {
       X: -50,
       Y: -50
@@ -702,13 +655,14 @@ var Slider = function () {
       value: 0
     };
     this.numberAlpha = {
-      value: 1
+      value: 0
     };
 
     this.tl = new TimelineMax({ paused: true });
     this.tlDots = new TimelineMax();
     this.tlArrowText = new TimelineMax();
     this.tlStart = new TimelineMax();
+    this.tlNumber = new TimelineMax();
 
     this.lines = [{
       moveX: 0.3,
@@ -849,9 +803,7 @@ var Slider = function () {
   }, {
     key: 'initLoad',
     value: function initLoad() {
-      var _this2 = this;
-
-      // console.log(this.startGlobalAlpha.value);
+      var _this = this;
 
       var _that = this;
 
@@ -865,12 +817,11 @@ var Slider = function () {
 
       var drawFirstShapes = function drawFirstShapes() {
 
-        _this2.ctx.globalAlpha = _that.startGlobalAlpha.value;
+        _that.ctx.globalAlpha = _that.startGlobalAlpha.value;
         _that.ctx.clearRect(0, 0, _that.canvas.width, _that.canvas.height);
         for (var i = 0; i < _that.shapes.length; i++) {
 
           _that.ctx.save();
-          // _that.ctx.filter = 'brightness(0.5)';
           _that.ctx.beginPath();
           _that.ctx.moveTo(_that.canvas.width * _that.shapes[i].moveX, _that.canvas.height * _that.shapes[i].moveY);
           _that.ctx.lineTo(_that.canvas.width * _that.shapes[i].x1, _that.canvas.height * _that.shapes[i].y1);
@@ -899,46 +850,44 @@ var Slider = function () {
         _that.ctx.fillText('01', _that.canvas.width * 0.046875, _that.canvas.height * 0.90);
         _that.ctx.restore();
       };
-
-      var firstDrawDots = function firstDrawDots() {
-        var _that = _this2;
-        _that.$dotsContainer = document.createElement('ul');
-        _that.$dotsContainer.classList.add('navContainer');
-        for (var i = 0; i < _that.images.length; i++) {
-          _that.$dotsLi = document.createElement('li');
-          _that.$dotsLink = document.createElement('a');
-          _that.$dotsLink.setAttribute('href', '#');
-          _that.$dotsLink.classList.add('navLink');
-          _that.$dotsLi.classList.add('navItem');
-          _that.$dotsLi.appendChild(_that.$dotsLink);
-          _that.navDots.push(_that.$dotsLi);
-          _that.$container.appendChild(_that.$dotsContainer);
-          _that.$dotsContainer.classList.add('navContainer');
-          _that.$dotsContainer.appendChild(_that.$dotsLi);
-        }
-        _that.navDots[0].classList.add('active');
-        _that.initDotsEvent();
-      };
-
-      var firstRender = function firstRender() {
-
-        _this2.tlStart.to(_that.numberAlpha, 1, {
-          value: 1,
-          ease: Power2.easeInOut,
-          onComplete: firstDrawDots
-        });
-
-        setTimeout(function () {
-          _this2.render();
-          _this2.drawSlideNumber();
-        }, 2000);
-      };
       this.tlStart.to(_that.startGlobalAlpha, 3, {
         value: 1,
         ease: Power2.easeInOut,
-        onUpdate: drawFirstShapes,
-        onComplete: firstRender
+        onUpdate: function onUpdate() {
+          drawFirstShapes();
+        }
+      }).addCallback(function () {
+        _this.tlNumber.to(_this.numberAlpha, 1, {
+          value: 1,
+          ease: Power2.easeInOut,
+          onComplete: _this.firstDrawDots()
+        });
+        setTimeout(function () {
+          _this.render();
+          _this.drawSlideNumber();
+        }, 2000);
       });
+    }
+  }, {
+    key: 'firstDrawDots',
+    value: function firstDrawDots() {
+      // let _that = this
+      this.$dotsContainer = document.createElement('ul');
+      this.$dotsContainer.classList.add('navContainer');
+      for (var i = 0; i < this.images.length; i++) {
+        this.$dotsLi = document.createElement('li');
+        this.$dotsLink = document.createElement('a');
+        this.$dotsLink.setAttribute('href', '#');
+        this.$dotsLink.classList.add('navLink');
+        this.$dotsLi.classList.add('navItem');
+        this.$dotsLi.appendChild(this.$dotsLink);
+        this.navDots.push(this.$dotsLi);
+        this.container.appendChild(this.$dotsContainer);
+        this.$dotsContainer.classList.add('navContainer');
+        this.$dotsContainer.appendChild(this.$dotsLi);
+      }
+      this.navDots[0].classList.add('active');
+      this.initDotsEvent();
     }
   }, {
     key: 'drawLines',
@@ -1077,10 +1026,56 @@ var Slider = function () {
       }
     }
   }, {
-    key: 'drawImageProp',
+    key: 'cutShape',
+    value: function cutShape() {
 
+      var _that = this;
+      this.nextSlide = new Image();
+      this.nextSlide.src = this.imageSrcNextSlide;
+
+      this.currentSlide = new Image();
+      this.currentSlide.src = this.imageSrcCurrentSlide;
+
+      var a = _that.angle;
+
+      _that.currentSlide.onload = function () {
+
+        // back image
+        _that.ctx.clearRect(0, 0, _that.canvas.width, _that.canvas.height);
+        _that.ctx.save();
+        _that.drawImageProp(_that.ctx, _that.nextSlide, -150, -150, _that.canvas.width + 150, _that.canvas.height + 150, 0, 0);
+        _that.ctx.restore();
+
+        for (var i = 0; i < _that.shapes.length; i++) {
+          _that.ctx.save();
+          _that.ctx.globalAlpha = _that.globalAlpha.value;
+          // _that.ctx.filter = 'brightness(0.5)';
+          _that.ctx.beginPath();
+          _that.ctx.moveTo(_that.canvas.width * _that.shapes[i].moveX, _that.canvas.height * _that.shapes[i].moveY);
+          _that.ctx.lineTo(_that.canvas.width * _that.shapes[i].x1, _that.canvas.height * _that.shapes[i].y1);
+          _that.ctx.lineTo(_that.canvas.width * _that.shapes[i].x2, _that.canvas.height * _that.shapes[i].y2);
+          _that.ctx.lineTo(_that.canvas.width * _that.shapes[i].x3, _that.canvas.height * _that.shapes[i].y3);
+          _that.ctx.closePath();
+          _that.ctx.clip();
+          _that.drawImageProp(_that.ctx, _that.currentSlide, _that.xoff.value * _that.shapes[i].inertia - 150, a * _that.xoff.value * _that.shapes[i].inertia - 150, _that.canvas.width + 150, _that.canvas.height + 150, 0, 0);
+          _that.ctx.restore();
+        }
+        // add overlay
+        _that.ctx.save();
+        _that.ctx.globalAlpha = _that.overlayOpacity;
+        _that.ctx.rect(0, 0, _that.canvas.width, _that.canvas.height);
+        _that.ctx.fillStyle = _that.grd;
+        _that.ctx.fill();
+        _that.ctx.restore();
+        _that.drawLines();
+        _that.drawSlideNumber();
+      };
+    }
 
     // cover img in canvas (for responsive)
+
+  }, {
+    key: 'drawImageProp',
     value: function drawImageProp(ctx, img, x, y, w, h, offsetX, offsetY) {
 
       if (arguments.length === 2) {
@@ -1139,29 +1134,36 @@ var Slider = function () {
     value: function render() {
       var _that = this;
       var OVER_VALUE = 1.5;
-      requestAnimationFrame(this.cutShape);
+      requestAnimationFrame(function () {
+        _that.cutShape;
+      });
       // reset tween
       this.tl.time(0);
 
       this.tl.to(this.xoff, 3, {
         value: _that.canvas.width * OVER_VALUE,
         ease: Power4.easeIn,
-        onUpdate: this.cutShape,
-        onComplete: changeImageTrigger
+        onUpdate: function onUpdate() {
+          _that.cutShape();
+        }
       }).to(this.globalAlpha, 1.5, {
         value: 0,
-        ease: Power4.easeIn,
-        onUpdate: this.cutShape
-      }, '-=3 ');
+        ease: Power4.easeIn
+      }, '-=3 ').addCallback(function () {
+        if (!_that.interval) {
+          _that.interval = setInterval(function () {
+            _that.changeImg();
+          }, 5500);
+        }
+      });
 
       _that.sliderCounter++;
-      _that.drawSlideNumber();
 
-      function changeImageTrigger() {
-        setTimeout(function () {
-          _that.changeImg();
-        }, 5000);
-      }
+      // if ( !_that.interval ) {
+      //   _that.interval = setInterval( () => {
+      //     _that.changeImg()
+      //   }, 5000)
+      // }
 
       window.addEventListener('scroll', function () {
         var yPos = window.pageYOffset;
@@ -1173,12 +1175,27 @@ var Slider = function () {
           });
         }
       });
-      _that.autoplayStop === false;
       _that.tl.play();
+    }
+  }, {
+    key: 'changeImg',
+    value: function changeImg() {
+      var _that = this;
+
+      if (_that.sliderCounter - 1 < _that.images.length - 1) {
+        _that.imageSrcNextSlide = _that.images[_that.sliderCounter];
+        _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1];
+      } else {
+        _that.imageSrcNextSlide = _that.images[0];
+        _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1];
+        _that.sliderCounter = 0;
+      }
+      this.render();
     }
   }, {
     key: 'drawSlideNumber',
     value: function drawSlideNumber() {
+
       var _that = this;
       if (_that.navDots.length) {
         for (var i = 0; i < _that.navDots.length; i++) {
@@ -1186,15 +1203,10 @@ var Slider = function () {
           _that.navDots[_that.sliderCounter - 1].classList.add('active');
         }
       }
-
+      // _that.textGlobalAlpha = 0;
       _that.ctx.fillStyle = _that.slideNumberColor;
       _that.ctx.font = _that.slideNumberFontSize + 'px ' + _that.slideNumberFontFamily;
-
-      if (_that.sliderCounter === 0) {
-        _that.ctx.fillText('0' + _that.images.length, _that.canvas.width * 0.046875, _that.canvas.height * 0.90);
-      } else {
-        _that.ctx.fillText('0' + _that.sliderCounter, _that.canvas.width * 0.046875, _that.canvas.height * 0.90);
-      }
+      _that.ctx.fillText('0' + (_that.getActiveIndex() + 1), _that.canvas.width * 0.046875, _that.canvas.height * 0.90);
     }
   }, {
     key: 'initDotsEvent',
@@ -1203,26 +1215,37 @@ var Slider = function () {
       for (var i = 0; i < _that.navDots.length; i++) {
         _that.navDots[i].addEventListener('click', function (e) {
           e.preventDefault();
+
+          clearInterval(_that.interval);
+
           if (this.classList.contains('active')) return;
 
-          if (_that.autoplayStop === false) {
-            _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1];
-          } else {
-            _that.imageSrcCurrentSlide = _that.imageSrcNextSlide;
-          }
-          _that.autoplayStop = true;
+          _that.imageSrcCurrentSlide = _that.interval === false ? _that.imageSrcCurrentSlide = _that.images[_that.sliderCounter - 1] : _that.imageSrcCurrentSlide = _that.imageSrcNextSlide;
+
           for (var _i = 0; _i < _that.navDots.length; _i++) {
             _that.navDots[_i].classList.remove('active');
           }
-          var index = _that.navDots.indexOf(this);
+          this.classList.add('active');
+
+          // let index = _that.navDots.indexOf(this)
+
+          var index = _that.getActiveIndex();
+          // console.log(index)
+
           _that.sliderCounter = index;
 
           _that.imageSrcNextSlide = _that.images[index];
-
           _that.render();
+
           _that.drawSlideNumber();
-          this.classList.add('active');
         });
+      }
+    }
+  }, {
+    key: 'getActiveIndex',
+    value: function getActiveIndex() {
+      for (var i = 0; i < this.navDots.length; i++) {
+        if (this.navDots[i].classList.contains('active')) return i;
       }
     }
   }, {
@@ -1232,12 +1255,36 @@ var Slider = function () {
       // change canvas size and reinit()
       if (window.innerWidth < 1020) return;
       window.addEventListener('resize', function () {
-        _that.canvas.width = _that.$container.offsetWidth;
-        _that.canvas.height = _that.$container.offsetHeight;
+        _that.canvas.width = _that.container.offsetWidth;
+        _that.canvas.height = _that.container.offsetHeight;
         _that.canvas.elem.width = _that.canvas.width;
         _that.canvas.elem.height = _that.canvas.height;
+        _that.init();
         window.location.reload();
       });
+    }
+  }, {
+    key: 'initRetinaDisplay',
+    value: function initRetinaDisplay() {
+      this.canvas.width = this.container.offsetWidth;
+      this.canvas.height = this.container.offsetHeight;
+      this.canvas.elem.width = this.canvas.width * 2;
+      this.canvas.elem.height = this.canvas.height * 2;
+      this.canvas.elem.style.width = this.container.offsetWidth + 'px';
+      this.canvas.elem.style.height = this.container.offsetHeight + 'px';
+      this.container.appendChild(this.canvas.elem);
+      this.ctx = this.canvas.elem.getContext('2d');
+      this.ctx.scale(2, 2);
+    }
+  }, {
+    key: 'initDefaultDisplay',
+    value: function initDefaultDisplay() {
+      this.canvas.width = this.container.offsetWidth;
+      this.canvas.height = this.container.offsetHeight;
+      this.canvas.elem.width = this.canvas.width;
+      this.canvas.elem.height = this.canvas.height;
+      this.container.appendChild(this.canvas.elem);
+      this.ctx = this.canvas.elem.getContext('2d');
     }
   }]);
 
