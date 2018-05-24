@@ -541,7 +541,7 @@ var _gsap = __webpack_require__(6);
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Slider = function () {
-  function Slider($class, options) {
+  function Slider(containerClass, options) {
     _classCallCheck(this, Slider);
 
     // check object assign support
@@ -591,7 +591,11 @@ var Slider = function () {
       rightTextAlign: 'right',
       overlayFirstColor: '#000',
       overlaySecondColor: '#000',
-      overlayOpacity: 0.5
+      overlayOpacity: 0.5,
+      showNav: true,
+      autoPlaySpeed: 2000,
+      animationSpeed: 3,
+      firstAnimationSpeed: 3
     };
     var populated = Object.assign(defaults, options);
     for (var key in populated) {
@@ -600,8 +604,8 @@ var Slider = function () {
       }
     }
     // create and append canvas into container
-    this.class = $class;
-    this.container = document.querySelector($class);
+    this.class = containerClass;
+    this.container = document.querySelector(containerClass);
     this.canvas = {};
     this.canvas.elem = document.createElement('canvas');
     // check retina display
@@ -609,6 +613,10 @@ var Slider = function () {
 
     // get all img in slider
     this.images = this.container.getAttribute('data-images').split(',');
+    // remove spaces
+    for (var i = 0; i < this.images.length; i++) {
+      this.images[i] = this.images[i].trim();
+    }
 
     if (!this.images.length) return;
 
@@ -616,7 +624,7 @@ var Slider = function () {
     this.sliderCounter = 1;
     this.imageSrcCurrentSlide = this.images[0];
     this.imageSrcNextSlide = this.images[1];
-
+    this.stopAutoplay = false;
     // overlay gradient
     this.grd = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0);
     this.grd.addColorStop(0, this.overlayFirstColor);
@@ -803,7 +811,6 @@ var Slider = function () {
   }, {
     key: 'initLoad',
     value: function initLoad() {
-      var _this = this;
 
       var _that = this;
 
@@ -850,27 +857,23 @@ var Slider = function () {
         _that.ctx.fillText('01', _that.canvas.width * 0.046875, _that.canvas.height * 0.90);
         _that.ctx.restore();
       };
-      this.tlStart.to(_that.startGlobalAlpha, 3, {
+      this.tlStart.to(_that.startGlobalAlpha, _that.firstAnimationSpeed, {
         value: 1,
         ease: Power2.easeInOut,
         onUpdate: function onUpdate() {
           drawFirstShapes();
         }
       }).addCallback(function () {
-        _this.tlNumber.to(_this.numberAlpha, 1, {
-          value: 1,
-          ease: Power2.easeInOut,
-          onComplete: _this.firstDrawDots()
-        });
+        if (_that.showNav) _that.drawDots();
         setTimeout(function () {
-          _this.render();
-          _this.drawSlideNumber();
-        }, 2000);
+          _that.render();
+          _that.drawSlideNumber();
+        }, _that.autoPlaySpeed);
       });
     }
   }, {
-    key: 'firstDrawDots',
-    value: function firstDrawDots() {
+    key: 'drawDots',
+    value: function drawDots() {
       // let _that = this
       this.$dotsContainer = document.createElement('ul');
       this.$dotsContainer.classList.add('navContainer');
@@ -1140,20 +1143,20 @@ var Slider = function () {
       // reset tween
       this.tl.time(0);
 
-      this.tl.to(this.xoff, 3, {
+      this.tl.to(this.xoff, _that.animationSpeed, {
         value: _that.canvas.width * OVER_VALUE,
         ease: Power4.easeIn,
         onUpdate: function onUpdate() {
           _that.cutShape();
         }
-      }).to(this.globalAlpha, 1.5, {
+      }).to(this.globalAlpha, _that.animationSpeed / 2, {
         value: 0,
         ease: Power4.easeIn
-      }, '-=3 ').addCallback(function () {
+      }, '-=' + _that.animationSpeed).addCallback(function () {
         if (!_that.interval) {
           _that.interval = setInterval(function () {
             _that.changeImg();
-          }, 5500);
+          }, _that.autoPlaySpeed);
         }
       });
 
@@ -1197,16 +1200,23 @@ var Slider = function () {
     value: function drawSlideNumber() {
 
       var _that = this;
-      if (_that.navDots.length) {
-        for (var i = 0; i < _that.navDots.length; i++) {
-          _that.navDots[i].classList.remove('active');
-          _that.navDots[_that.sliderCounter - 1].classList.add('active');
+      if (!_that.stopAutoplay) {
+        if (_that.navDots.length) {
+          for (var i = 0; i < _that.navDots.length; i++) {
+            _that.navDots[i].classList.remove('active');
+            _that.navDots[_that.sliderCounter - 1].classList.add('active');
+          }
         }
       }
+
       // _that.textGlobalAlpha = 0;
       _that.ctx.fillStyle = _that.slideNumberColor;
       _that.ctx.font = _that.slideNumberFontSize + 'px ' + _that.slideNumberFontFamily;
-      _that.ctx.fillText('0' + (_that.getActiveIndex() + 1), _that.canvas.width * 0.046875, _that.canvas.height * 0.90);
+      if (_that.showNav) {
+        _that.ctx.fillText('0' + (_that.getActiveIndex() + 1), _that.canvas.width * 0.046875, _that.canvas.height * 0.90);
+      } else {
+        _that.ctx.fillText('0' + _that.sliderCounter, _that.canvas.width * 0.046875, _that.canvas.height * 0.90);
+      }
     }
   }, {
     key: 'initDotsEvent',
@@ -1214,6 +1224,7 @@ var Slider = function () {
       var _that = this;
       for (var i = 0; i < _that.navDots.length; i++) {
         _that.navDots[i].addEventListener('click', function (e) {
+          _that.stopAutoplay = true;
           e.preventDefault();
 
           clearInterval(_that.interval);
