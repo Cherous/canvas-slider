@@ -52,7 +52,7 @@ export default class Slider {
       overlaySecondColor: '#000',
       overlayOpacity: 0.5,
       showNav: true,
-      autoPlaySpeed: 2000,
+      autoPlaySpeed: 4000,
       animationSpeed: 3,
       firstAnimationSpeed: 3
     }
@@ -63,18 +63,18 @@ export default class Slider {
       }
     }
     // create and append canvas into container
-    this.class = containerClass;
-    this.container = document.querySelector(containerClass);
-    this.canvas = {};
-    this.canvas.elem = document.createElement('canvas');
+    this.class = containerClass
+    this.container = document.querySelector(containerClass)
+    this.canvas = {}
+    this.canvas.elem = document.createElement('canvas')
     // check retina display
-    window.devicePixelRatio > 1 ? this.initRetinaDisplay() : this.initDefaultDisplay();
+    window.devicePixelRatio > 1 ? this.initRetinaDisplay() : this.initDefaultDisplay()
     
     // get all img in slider
-    this.images = this.container.getAttribute('data-images').split(',');
+    this.images = this.container.getAttribute('data-images').split(',')
     // remove spaces
     for (let i = 0; i < this.images.length; i++) {
-      this.images[i] = this.images[i].trim();
+      this.images[i] = this.images[i].trim()
     }
     
     if (!this.images.length) return
@@ -83,11 +83,11 @@ export default class Slider {
     this.sliderCounter = 1
     this.imageSrcCurrentSlide = this.images[0]
     this.imageSrcNextSlide = this.images[1]
-    this.stopAutoplay = false;
+    this.stopAutoplay = false
     // overlay gradient
-    this.grd = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0);
-    this.grd.addColorStop(0, this.overlayFirstColor);
-    this.grd.addColorStop(1, this.overlaySecondColor);
+    this.grd = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0)
+    this.grd.addColorStop(0, this.overlayFirstColor)
+    this.grd.addColorStop(1, this.overlaySecondColor)
     
     // params
     this.navDots = []
@@ -125,11 +125,11 @@ export default class Slider {
       value: 0
     }
     
-    this.tl = new TimelineMax({paused: true})
-    this.tlDots = new TimelineMax()
-    this.tlArrowText = new TimelineMax()
-    this.tlStart = new TimelineMax()
-    this.tlNumber = new TimelineMax()
+    this.tl = new TimelineMax({paused: true});
+    this.tlDots = new TimelineMax();
+    this.tlArrowText = new TimelineMax();
+    this.tlStart = new TimelineMax();
+    this.tlNumber = new TimelineMax();
     
     this.lines = [
       {
@@ -181,7 +181,7 @@ export default class Slider {
         y: 1,
         inertia: 2.5
       }
-    ],
+    ];
       this.shapes = [
         {
           moveX: 0,
@@ -270,8 +270,8 @@ export default class Slider {
           x3: 0.7,
           y3: 1,
           inertia: this.getRandom(5, 15)
-        },
-      ],
+        }
+      ];
       this.onResize()
     this.init()
   }
@@ -339,12 +339,17 @@ export default class Slider {
         onUpdate: function () {
           drawFirstShapes()
         }
-      }).addCallback( function() {
-      if ( _that.showNav) _that.drawDots();
-      setTimeout( function() {
-        _that.render()
-        _that.drawSlideNumber()
-      }, _that.autoPlaySpeed)
+      }).addCallback(function () {
+      if (_that.showNav) _that.drawDots()
+      if (!_that.interval) {
+        _that.interval = setInterval(() => {
+          _that.changeImg()
+        }, _that.autoPlaySpeed)
+      }
+      // setTimeout( function() {
+      //   _that.render()
+      //   _that.drawSlideNumber()
+      // }, _that.autoPlaySpeed)
       
     })
     
@@ -620,10 +625,10 @@ export default class Slider {
           _that.cutShape()
         }
       })
-      .to(this.globalAlpha, _that.animationSpeed/2, {
+      .to(this.globalAlpha, _that.animationSpeed / 2, {
         value: 0,
         ease: Power4.easeIn
-      }, `-=${_that.animationSpeed}` ).addCallback(() => {
+      }, `-=${_that.animationSpeed}`).addCallback(() => {
       if (!_that.interval) {
         _that.interval = setInterval(() => {
           _that.changeImg()
@@ -671,7 +676,7 @@ export default class Slider {
   drawSlideNumber () {
     
     let _that = this
-    if ( !_that.stopAutoplay ) {
+    if (!_that.stopAutoplay) {
       if (_that.navDots.length) {
         for (let i = 0; i < _that.navDots.length; i++) {
           _that.navDots[i].classList.remove('active')
@@ -683,12 +688,11 @@ export default class Slider {
     // _that.textGlobalAlpha = 0;
     _that.ctx.fillStyle = _that.slideNumberColor
     _that.ctx.font = `${_that.slideNumberFontSize}px ${_that.slideNumberFontFamily}`
-    if ( _that.showNav ) {
+    if (_that.showNav) {
       _that.ctx.fillText(`0${_that.getActiveIndex() + 1}`, _that.canvas.width * 0.046875, _that.canvas.height * 0.90)
     } else {
       _that.ctx.fillText(`0${_that.sliderCounter}`, _that.canvas.width * 0.046875, _that.canvas.height * 0.90)
     }
-    
     
   }
   
@@ -696,7 +700,7 @@ export default class Slider {
     let _that = this
     for (let i = 0; i < _that.navDots.length; i++) {
       _that.navDots[i].addEventListener('click', function (e) {
-        _that.stopAutoplay = true;
+        _that.stopAutoplay = true
         e.preventDefault()
         
         clearInterval(_that.interval)

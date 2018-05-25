@@ -304,7 +304,15 @@ switch (_helpers.currentPage) {
   /** Home page */
   case 'home':
     {
-      new _Slider2.default('.canvas-wrapper');
+      new _Slider2.default('.canvas-wrapper', {
+        linesColor: 'rgba(211,131,18,0.5)',
+        smallLineColor: 'rgba(255,255,255,.5)',
+        slideNumberColor: 'rgba(255,255,255,0.5)',
+        overlayFirstColor: '#D38312',
+        overlaySecondColor: 'deepskyblue',
+        overlayOpacity: 0.3,
+        rightText: 'E N J O Y'
+      });
     }break;
 
   /** No page found */
@@ -593,7 +601,7 @@ var Slider = function () {
       overlaySecondColor: '#000',
       overlayOpacity: 0.5,
       showNav: true,
-      autoPlaySpeed: 2000,
+      autoPlaySpeed: 4000,
       animationSpeed: 3,
       firstAnimationSpeed: 3
     };
@@ -714,7 +722,8 @@ var Slider = function () {
       x: 0,
       y: 1,
       inertia: 2.5
-    }], this.shapes = [{
+    }];
+    this.shapes = [{
       moveX: 0,
       moveY: 0,
       x1: 0.3,
@@ -794,7 +803,8 @@ var Slider = function () {
       x3: 0.7,
       y3: 1,
       inertia: this.getRandom(5, 15)
-    }], this.onResize();
+    }];
+    this.onResize();
     this.init();
   }
 
@@ -865,10 +875,15 @@ var Slider = function () {
         }
       }).addCallback(function () {
         if (_that.showNav) _that.drawDots();
-        setTimeout(function () {
-          _that.render();
-          _that.drawSlideNumber();
-        }, _that.autoPlaySpeed);
+        if (!_that.interval) {
+          _that.interval = setInterval(function () {
+            _that.changeImg();
+          }, _that.autoPlaySpeed);
+        }
+        // setTimeout( function() {
+        //   _that.render()
+        //   _that.drawSlideNumber()
+        // }, _that.autoPlaySpeed)
       });
     }
   }, {

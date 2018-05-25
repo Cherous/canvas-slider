@@ -22,7 +22,15 @@ import { currentPage } from './modules/dev/_helpers';
 switch (currentPage) {
   /** Home page */
   case 'home': {
-    new Slider('.canvas-wrapper');
+    new Slider('.canvas-wrapper', {
+      linesColor: 'rgba(211,131,18,0.5)',
+      smallLineColor: 'rgba(255,255,255,.5)',
+      slideNumberColor: 'rgba(255,255,255,0.5)',
+      overlayFirstColor: '#D38312',
+      overlaySecondColor: 'deepskyblue',
+      overlayOpacity: 0.3,
+      rightText: 'E N J O Y'
+    });
   } break;
 
   /** No page found */
